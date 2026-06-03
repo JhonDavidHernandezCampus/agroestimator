@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  /* Precision Agriculture Color Palette derived from mockup and guide */
+  --color-primary: #366b00;
+  --color-primary-container: #bfff8a;
+  --color-on-primary-container: #427811;
+  --color-secondary: #4b670c;
+  --color-secondary-container: #c9ec85;
+  --color-on-secondary-container: #4f6c11;
+  --color-tertiary: #526525;
+  --color-tertiary-container: #def6a5;
+  --color-on-tertiary-container: #5e7230;
+  --color-background-custom: #f9f9ff;
+  --color-on-background-custom: #111c2d;
+  --color-surface-container: #e7eeff;
+  --color-surface-container-high: #dee8ff;
+  --color-surface-bright: #f9f9ff;
+  --color-surface-lowest: #ffffff;
+  --color-outline: #727a69;
+  --color-outline-variant: #c2c9b6;
+  --color-error-custom: #ba1a1a;
+  --color-error-container: #ffdad6;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-background-custom);
+  color: var(--color-on-background-custom);
+  min-height: 100vh;
+}
+

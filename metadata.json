@@ -1,0 +1,6 @@
+{
+  "name": "AgroEstimador",
+  "description": "Aplicación para productores agrícolas que permite registrar cosechas, estimar el peso mediante técnicas de muestreo, visualizar estadísticas y consultar históricos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
