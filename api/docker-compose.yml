@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: agroestimator_db
+    restart: always
+    environment:
+      - POSTGRES_DB=agroestimator
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Optionally mount SQL script for DB auto-creation if container is fresh:
+      - ./database/sqldatabse.sql:/docker-entrypoint-initdb.d/init.sql
+
+  api:
+    image: agroestimator_api
+    container_name: agroestimator_api
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=agroestimator;Username=postgres;Password=postgres;Include Error Detail=true
+      - Jwt__Key=super_secret_jwt_key_that_must_be_at_least_32_bytes_long_for_hmac_sha256
+      - Jwt__Issuer=AgroEstimadorServer
+      - Jwt__Audience=AgroEstimadorClient
+      - Jwt__ExpiryInMinutes=60
+      - Jwt__RefreshTokenExpiryInDays=7
+    depends_on:
+      - db
+
+volumes:
+  pgdata:

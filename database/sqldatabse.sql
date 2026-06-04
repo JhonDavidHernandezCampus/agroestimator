@@ -11,7 +11,7 @@
 -- 0. EXTENSIONES Y CONFIGURACIÓN INICIAL
 -- ============================================================================
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";  -- Para gen_random_uuid()
+CREATE EXTENSION IF NOT EXISTS "pgcrypto"; 
 
 -- ============================================================================
 -- 1. TABLAS BASE (Sin dependencias FK)
