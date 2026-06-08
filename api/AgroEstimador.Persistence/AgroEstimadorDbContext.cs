@@ -189,7 +189,7 @@ public class AgroEstimadorDbContext : DbContext
                 .HasConstraintName("fk_user_roles_user");
 
             entity.HasOne(e => e.Role)
-                .WithMany()
+                .WithMany(r => r.UserRoles)
                 .HasForeignKey(e => e.RoleId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_user_roles_role");

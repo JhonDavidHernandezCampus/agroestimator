@@ -1,8 +1,98 @@
-node_modules/
-build/
-dist/
-coverage/
+# =========================================================================
+# .gitignore para AgroEstimador (Híbrido .NET Web API + React/Vite Frontend)
+# =========================================================================
+
+# -------------------------------------------------------------------------
+# 1. Archivos del Sistema y Carpetas Comunes
+# -------------------------------------------------------------------------
 .DS_Store
+Thumbs.db
+desktop.ini
 *.log
+*.tmp
+*.temp
+
+# -------------------------------------------------------------------------
+# 2. Node.js / Frontend (React + Vite + TypeScript)
+# -------------------------------------------------------------------------
+node_modules/
+/dist/
+/build/
+/out/
+/coverage/
+.npm/
+.eslintcache
+.parcel-cache/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# -------------------------------------------------------------------------
+# 3. .NET / C# (Backend)
+# -------------------------------------------------------------------------
+# Archivos compilados y temporales
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+bld/
+[Log]/
+
+# Archivos específicos de usuario / IDE de Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.suo.old
+*.user.old
+
+# Archivos de publicación y rendimiento de .NET
+*.publish.xml
+*.pubxml
+*.pubxml.user
+*.gpState
+*.rsp
+*.psess
+*.vsp
+*.vspx
+*.sap
+AutoTest.Net/
+artifacts/
+
+# Herramientas de base de datos locales (migraciones temporales o scripts generados)
+*.db-shm
+*.db-wal
+
+# -------------------------------------------------------------------------
+# 4. Entornos e Información Sensible (Secrets)
+# -------------------------------------------------------------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.example.local
+# Ignorar archivos .env específicos pero mantener .env.example
 .env*
 !.env.example
+
+# Configuraciones locales de la API
+# (Opcional) Si manejas secretos locales en appsettings.local.json
+api/*/appsettings.local.json
+
+# -------------------------------------------------------------------------
+# 5. Configuración de Editores (VS Code, Rider, etc.)
+# -------------------------------------------------------------------------
+.vscode/
+# Permitir solo configuraciones compartidas de VS Code si se desea
+# !.vscode/extensions.json
+# !.vscode/launch.json
+.idea/
+*.sln.iml
+*.suo

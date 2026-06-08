@@ -60,6 +60,14 @@ public class ExceptionMiddleware
             if (_env.IsDevelopment())
             {
                 message = exception.Message;
+                if (exception.InnerException != null)
+                {
+                    message += " | Inner Exception: " + exception.InnerException.Message;
+                    if (exception.InnerException.InnerException != null)
+                    {
+                        message += " | Detail: " + exception.InnerException.InnerException.Message;
+                    }
+                }
                 responseData = exception.StackTrace ?? string.Empty;
             }
         }
