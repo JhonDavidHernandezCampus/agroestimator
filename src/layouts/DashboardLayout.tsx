@@ -20,6 +20,7 @@ import {
   Leaf,
   CloudLightning,
 } from "lucide-react";
+import { navigationRoutes } from "../routes/appRoutes";
 
 export function DashboardLayout() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -41,13 +42,7 @@ export function DashboardLayout() {
     return <Navigate to="/login" replace />;
   }
 
-  const navItems = [
-    { label: "Panel", path: "/dashboard", icon: LayoutDashboard },
-    { label: "Nueva Cosecha", path: "/harvest/new", icon: PlusCircle },
-    { label: "Historial", path: "/history", icon: History },
-    { label: "Vehículos", path: "/vehicles", icon: Truck },
-    { label: "Perfil", path: "/profile", icon: User },
-  ];
+  const navItems = navigationRoutes;
 
   const handleLogout = async () => {
     await logout();

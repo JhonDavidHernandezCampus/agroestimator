@@ -65,6 +65,19 @@ export interface FarmDto {
   isActive: boolean;
 }
 
+export interface FarmStatisticsDto {
+  farmId: string;
+  farmName: string;
+  totalHarvests: number;
+  totalWeightKg: number;
+  totalValue: number;
+  avgWeightPerBunch: number;
+  firstHarvestDate?: string | null;
+  lastHarvestDate?: string | null;
+  distinctProducts: number;
+  distinctLots: number;
+}
+
 export interface LotDto {
   id: string;
   farmId: string;
@@ -143,6 +156,62 @@ export interface TrendDto {
   value: number;
 }
 
+export interface FarmMutationRequest {
+  name: string;
+  location?: string | null;
+  municipality?: string | null;
+  department?: string | null;
+  totalHectares?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export interface LotMutationRequest {
+  farmId: string;
+  name: string;
+  hectares?: number | null;
+  cropType?: string | null;
+  plantingDate?: string | null;
+}
+
+export interface ProductMutationRequest {
+  name: string;
+  description?: string | null;
+  defaultUnitId?: string | null;
+  currentPricePerKg?: number | null;
+}
+
+export interface HarvestFilters {
+  startDate?: string;
+  endDate?: string;
+  farmName?: string;
+  lotName?: string;
+  productName?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateHarvestRequest {
+  date: string;
+  farmName: string;
+  lot: string;
+  product: string;
+  vehicle: string;
+  quantity: number;
+  samples: Harvest['samples'];
+  pricePerKg?: number | null;
+  deviceId?: string | null;
+  harvestId?: string | null;
+}
+
+export interface UpdateHarvestRequest {
+  lot?: string;
+  quantity?: number;
+  samples?: Harvest['samples'];
+  pricePerKg?: number | null;
+}
+
 export interface StoredAuthSession {
   auth: AuthResponse;
   profile?: UserProfileDto | null;
@@ -150,6 +219,8 @@ export interface StoredAuthSession {
 
 export type Vehicle = VehicleDto;
 export type Product = ProductDto;
+export type Farm = FarmDto;
+export type Lot = LotDto;
 export type HarvestSample = HarvestSampleDto;
 export type Harvest = HarvestDto;
 export type Statistics = StatisticsDto;

@@ -2,39 +2,30 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { useFarms, useLots, useProducts, useRegisterHarvest, useVehicles } from '../../hooks';
-import { Button } from '../../components/common/Button';
-import { Input } from '../../components/common/Input';
-import { Select } from '../../components/common/Select';
-import { Card } from '../../components/common/Card';
-import { PageHeader } from '../../components/common/PageHeader';
-import { HarvestSample } from '../../types';
-import { CreateHarvestRequest } from '../../api/harvest.api';
-import {
-  AlertCircle,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  DollarSign,
-  Layers,
-  Plus,
-  Scale,
-  Sparkles,
-  Trash2,
-} from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, DollarSign, MapPin, Plus, Scale, Sparkles, Trash2, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { AlertBanner } from '../../components/common/AlertBanner';
+import { Button } from '../../components/common/Button';
+import { Card } from '../../components/common/Card';
+import { EmptyState } from '../../components/common/EmptyState';
+import { Input } from '../../components/common/Input';
+import { Loader } from '../../components/common/Loader';
+import { PageHeader } from '../../components/common/PageHeader';
+import { Select } from '../../components/common/Select';
+import { useFarms, useLots, useProducts, useRegisterHarvest, useVehicles } from '../../hooks';
+import { CreateHarvestRequest, HarvestSample } from '../../types';
 
 const logisticsSchema = yup.object({
   date: yup.string().required('La fecha es obligatoria'),
-  farmName: yup.string().required('La finca es obligatoria'),
-  lot: yup.string().required('El lote es obligatorio'),
-  product: yup.string().required('El producto es obligatorio'),
-  vehicle: yup.string().required('El vehículo es obligatorio'),
+  farmId: yup.string().uuid('Seleccione una finca valida.').required('La finca es obligatoria'),
+  lotId: yup.string().uuid('Seleccione un lote valido.').required('El lote es obligatorio'),
+  productId: yup.string().uuid('Seleccione un producto valido.').required('El producto es obligatorio'),
+  vehicleId: yup.string().uuid('Seleccione un vehiculo valido.').required('El vehiculo es obligatorio'),
   quantity: yup
     .number()
-    .typeError('La cantidad debe ser un número')
+    .typeError('La cantidad debe ser un numero')
     .positive('La cantidad debe ser mayor que cero')
-    .integer('La cantidad debe ser un número entero')
+    .integer('La cantidad debe ser un numero entero')
     .required('La cantidad es obligatoria'),
 }).required();
 
@@ -64,49 +55,90 @@ export function RegisterHarvest() {
     resolver: yupResolver(logisticsSchema) as any,
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
-      farmName: '',
-      lot: '',
-      product: '',
-      vehicle: '',
+      farmId: '',
+      lotId: '',
+      productId: '',
+      vehicleId: '',
       quantity: 0,
     },
   });
 
-  const selectedFarmName = watch('farmName');
-  const selectedProductName = watch('product');
-  const selectedFarm = farms.find((farm) => farm.name === selectedFarmName);
-  const selectedProduct = products.find((product) => product.name === selectedProductName);
+  const selectedFarmId = watch('farmId');
+  const selectedLotId = watch('lotId');
+  const selectedProductId = watch('productId');
+  const selectedVehicleId = watch('vehicleId');
+  const quantity = watch('quantity') || 0;
+
+  const selectedFarm = farms.find((farm) => farm.id === selectedFarmId);
+  const selectedProduct = products.find((product) => product.id === selectedProductId);
+  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === selectedVehicleId);
   const { data: lots = [], isLoading: lotsLoading } = useLots(selectedFarm?.id || '');
+  const selectedLot = lots.find((lot) => lot.id === selectedLotId);
+
+  const missingCatalogs = [
+    {
+      key: 'farms',
+      visible: !farmsLoading && farms.length === 0,
+      title: 'No hay fincas registradas',
+      description: 'Cree una finca antes de iniciar el flujo de lotes y cosechas.',
+      actionText: 'Crear finca',
+      path: '/farms',
+    },
+    {
+      key: 'products',
+      visible: !productsLoading && products.length === 0,
+      title: 'No hay productos registrados',
+      description: 'Debe existir al menos un producto real para registrar la cosecha.',
+      actionText: 'Ir a productos',
+      path: '/products',
+    },
+    {
+      key: 'vehicles',
+      visible: !vehiclesLoading && vehicles.length === 0,
+      title: 'No hay vehiculos disponibles',
+      description: 'La API exige seleccionar un vehiculo para registrar la cosecha.',
+      actionText: 'Gestionar vehiculos',
+      path: '/vehicles',
+    },
+    {
+      key: 'lots',
+      visible: Boolean(selectedFarmId) && !lotsLoading && lots.length === 0,
+      title: 'La finca seleccionada no tiene lotes',
+      description: 'Registre uno o varios lotes para poder continuar.',
+      actionText: 'Crear lote',
+      path: selectedFarmId ? `/lots?farmId=${selectedFarmId}` : '/lots',
+    },
+  ].filter((item) => item.visible);
 
   useEffect(() => {
-    if (!selectedFarmName && farms.length > 0) {
-      setValue('farmName', farms[0].name, { shouldValidate: true });
+    if (!selectedFarmId && farms.length > 0) {
+      setValue('farmId', farms[0].id, { shouldValidate: true });
     }
-  }, [farms, selectedFarmName, setValue]);
+  }, [farms, selectedFarmId, setValue]);
 
   useEffect(() => {
-    if (!selectedProductName && products.length > 0) {
-      setValue('product', products[0].name, { shouldValidate: true });
+    if (!selectedProductId && products.length > 0) {
+      setValue('productId', products[0].id, { shouldValidate: true });
     }
-  }, [products, selectedProductName, setValue]);
+  }, [products, selectedProductId, setValue]);
 
   useEffect(() => {
-    if (!getValues('vehicle') && vehicles.length > 0) {
-      setValue('vehicle', vehicles[0].name, { shouldValidate: true });
+    if (!selectedVehicleId && vehicles.length > 0) {
+      setValue('vehicleId', vehicles[0].id, { shouldValidate: true });
     }
-  }, [vehicles, getValues, setValue]);
+  }, [vehicles, selectedVehicleId, setValue]);
 
   useEffect(() => {
     if (lots.length === 0) {
-      setValue('lot', '', { shouldValidate: true });
+      setValue('lotId', '', { shouldValidate: true });
       return;
     }
 
-    const currentLot = getValues('lot');
-    if (!currentLot || !lots.some((lot) => lot.name === currentLot)) {
-      setValue('lot', lots[0].name, { shouldValidate: true });
+    const currentLotId = getValues('lotId');
+    if (!currentLotId || !lots.some((lot) => lot.id === currentLotId)) {
+      setValue('lotId', lots[0].id, { shouldValidate: true });
     }
-  }, [lots, getValues, setValue]);
+  }, [getValues, lots, setValue]);
 
   useEffect(() => {
     if (selectedProduct?.currentPricePerKg != null) {
@@ -114,10 +146,9 @@ export function RegisterHarvest() {
     }
   }, [selectedProduct]);
 
-  const quantity = getValues('quantity') || 0;
   const averageWeight =
     samples.length > 0
-      ? parseFloat((samples.reduce((accumulator, sample) => accumulator + sample.weight, 0) / samples.length).toFixed(2))
+      ? parseFloat((samples.reduce((total, sample) => total + sample.weight, 0) / samples.length).toFixed(2))
       : 0;
   const estimatedWeight = parseFloat((quantity * averageWeight).toFixed(1));
   const estimatedValue = parseFloat((estimatedWeight * pricePerKg).toFixed(1));
@@ -127,7 +158,7 @@ export function RegisterHarvest() {
     setFormError(null);
 
     if (!currentWeight || Number.isNaN(weightNumber) || weightNumber <= 0) {
-      setFormError('Por favor ingrese un peso de muestra válido mayor a 0.');
+      setFormError('Por favor ingrese un peso de muestra valido mayor a 0.');
       return;
     }
 
@@ -154,7 +185,7 @@ export function RegisterHarvest() {
   };
 
   const handleNextStep1 = async () => {
-    const isValid = await trigger();
+    const isValid = await trigger(['date', 'farmId', 'lotId', 'productId', 'vehicleId', 'quantity']);
     if (isValid) {
       setFormError(null);
       setStep(2);
@@ -176,46 +207,73 @@ export function RegisterHarvest() {
 
     try {
       const logisticsData = getValues();
+      const farm = farms.find((item) => item.id === logisticsData.farmId);
+      const lot = lots.find((item) => item.id === logisticsData.lotId);
+      const product = products.find((item) => item.id === logisticsData.productId);
+      const vehicle = vehicles.find((item) => item.id === logisticsData.vehicleId);
+
+      if (!farm || !lot || !product || !vehicle) {
+        setFormError('No fue posible resolver los catalogos seleccionados desde la API.');
+        return;
+      }
+
       const payload: CreateHarvestRequest = {
         date: logisticsData.date,
-        farmName: logisticsData.farmName,
-        lot: logisticsData.lot,
-        product: logisticsData.product,
-        vehicle: logisticsData.vehicle,
+        farmName: farm.name,
+        lot: lot.name,
+        product: product.name,
+        vehicle: vehicle.name,
         quantity: logisticsData.quantity,
         samples,
         pricePerKg,
         deviceId: navigator.userAgent,
       };
 
-      await registerMutation(payload);
-      navigate('/dashboard');
+      const createdHarvest = await registerMutation(payload);
+      navigate(`/history?created=${createdHarvest.id}`);
     } catch (error: any) {
       setFormError(error?.message || 'Error al guardar la cosecha.');
     }
   };
 
+  if (farmsLoading || productsLoading || vehiclesLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="h-10 bg-surface-container animate-pulse rounded-lg w-1/3" />
+        <Loader variant="skeleton-card" />
+        <Loader variant="skeleton-list" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-stack-lg animate-in fade-in duration-300">
-      <PageHeader title="Asistente de Estimación" description="Registre cosechas y estime pesos de campo mediante muestreo." />
+      <PageHeader
+        title="Registrar Cosecha"
+        description="Flujo completo con finca, lote, producto y vehiculo consumidos exclusivamente desde la API real."
+      />
 
-      {(farmsLoading || productsLoading || vehiclesLoading || lotsLoading) && (
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low px-4 py-3 text-sm font-semibold text-on-surface-variant">
-          Cargando catálogos reales desde la API...
-        </div>
-      )}
+      {lotsLoading && selectedFarmId && <AlertBanner variant="info" message="Cargando lotes reales de la finca seleccionada..." />}
+      {formError && <AlertBanner variant="error" message={formError} />}
 
-      {formError && (
-        <div className="bg-error-container text-error-custom p-4 rounded-xl flex items-start gap-2 text-sm font-bold border border-error-custom/10 max-w-xl mx-auto">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span>{formError}</span>
+      {missingCatalogs.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {missingCatalogs.map((item) => (
+            <EmptyState
+              key={item.key}
+              title={item.title}
+              description={item.description}
+              actionText={item.actionText}
+              onAction={() => navigate(item.path)}
+            />
+          ))}
         </div>
       )}
 
       <div className="flex items-center w-full max-w-lg mx-auto mb-10 pb-4">
         <div className="flex flex-col items-center">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-md transition-all ${step >= 1 ? 'bg-primary text-white' : 'bg-surface-container-high text-outline'}`}>1</div>
-          <span className={`text-xs font-bold mt-2 ${step >= 1 ? 'text-primary' : 'text-on-surface-variant'}`}>Logística</span>
+          <span className={`text-xs font-bold mt-2 ${step >= 1 ? 'text-primary' : 'text-on-surface-variant'}`}>Logistica</span>
         </div>
         <div className={`step-progress-line ${step >= 2 ? 'step-progress-line-active' : ''}`} />
         <div className="flex flex-col items-center">
@@ -233,54 +291,78 @@ export function RegisterHarvest() {
         {step === 1 && (
           <Card className="p-6 md:p-8 space-y-6">
             <h3 className="text-xl font-bold text-on-surface flex items-center gap-2 pb-2 border-b border-outline-variant/30">
-              <Calendar className="w-5 h-5 text-primary" /> Paso 1: Logística de Campo
+              <Calendar className="w-5 h-5 text-primary" /> Paso 1: Logistica de Campo
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input id="date" type="date" label="Fecha de Cosecha" error={errors.date?.message} {...register('date')} />
               <Select
-                id="farmName"
+                id="farmId"
                 label="Finca de Procedencia"
-                error={errors.farmName?.message}
-                disabled={farmsLoading || farms.length === 0}
-                options={farms.length > 0 ? farms.map((farm) => ({ value: farm.name, label: farm.name })) : [{ value: '', label: 'No hay fincas disponibles' }]}
-                {...register('farmName')}
+                error={errors.farmId?.message}
+                disabled={farms.length === 0}
+                options={farms.length > 0 ? farms.map((farm) => ({ value: farm.id, label: farm.name })) : [{ value: '', label: 'No hay fincas disponibles' }]}
+                {...register('farmId')}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select
-                id="lot"
+                id="lotId"
                 label="Lote"
-                error={errors.lot?.message}
+                error={errors.lotId?.message}
                 disabled={!selectedFarm || lotsLoading || lots.length === 0}
-                options={lots.length > 0 ? lots.map((lot) => ({ value: lot.name, label: lot.name })) : [{ value: '', label: selectedFarm ? 'No hay lotes disponibles' : 'Seleccione una finca primero' }]}
-                {...register('lot')}
+                options={lots.length > 0 ? lots.map((lot) => ({ value: lot.id, label: lot.name })) : [{ value: '', label: selectedFarm ? 'No hay lotes disponibles' : 'Seleccione una finca primero' }]}
+                {...register('lotId')}
               />
               <Select
-                id="product"
+                id="productId"
                 label="Tipo de Producto"
-                error={errors.product?.message}
-                disabled={productsLoading || products.length === 0}
-                options={products.length > 0 ? products.map((product) => ({ value: product.name, label: product.name })) : [{ value: '', label: 'No hay productos disponibles' }]}
-                {...register('product')}
+                error={errors.productId?.message}
+                disabled={products.length === 0}
+                options={products.length > 0 ? products.map((product) => ({ value: product.id, label: product.name })) : [{ value: '', label: 'No hay productos disponibles' }]}
+                {...register('productId')}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select
-                id="vehicle"
-                label="Vehículo Asignado"
-                error={errors.vehicle?.message}
-                disabled={vehiclesLoading || vehicles.length === 0}
-                options={vehicles.length > 0 ? vehicles.map((vehicle) => ({ value: vehicle.name, label: `${vehicle.name} [${vehicle.plate}]` })) : [{ value: '', label: 'No hay vehículos disponibles' }]}
-                {...register('vehicle')}
+                id="vehicleId"
+                label="Vehiculo Asignado"
+                error={errors.vehicleId?.message}
+                disabled={vehicles.length === 0}
+                options={vehicles.length > 0 ? vehicles.map((vehicle) => ({ value: vehicle.id, label: `${vehicle.name} [${vehicle.plate}]` })) : [{ value: '', label: 'No hay vehiculos disponibles' }]}
+                {...register('vehicleId')}
               />
-              <Input id="quantity" type="number" label="Cantidad total de racimos/gajos" placeholder="ej. 1200" error={errors.quantity?.message} {...register('quantity')} />
+              <Input id="quantity" type="number" label="Cantidad total de racimos/gajos" placeholder="ej. 1200" error={errors.quantity?.message} {...register('quantity', { valueAsNumber: true })} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-xl bg-surface-container-low p-4 border border-outline-variant/20">
+              <div className="flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-primary mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Finca</p>
+                  <p className="text-sm font-semibold text-on-surface">{selectedFarm?.name || 'Seleccione una finca'}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Scale className="w-5 h-5 text-primary mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Lote</p>
+                  <p className="text-sm font-semibold text-on-surface">{selectedLot?.name || 'Seleccione un lote'}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Truck className="w-5 h-5 text-primary mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Vehiculo</p>
+                  <p className="text-sm font-semibold text-on-surface">{selectedVehicle?.name || 'Seleccione un vehiculo'}</p>
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button type="button" onClick={handleNextStep1} icon={<ChevronRight className="w-5 h-5" />}>
+              <Button type="button" onClick={handleNextStep1} icon={<ChevronRight className="w-5 h-5" />} disabled={missingCatalogs.length > 0}>
                 Siguiente: Muestreo de Peso
               </Button>
             </div>
@@ -290,7 +372,7 @@ export function RegisterHarvest() {
         {step === 2 && (
           <Card className="p-6 md:p-8 space-y-6">
             <h3 className="text-xl font-bold text-on-surface flex items-center gap-2 pb-2 border-b border-outline-variant/30">
-              <Scale className="w-5 h-5 text-primary" /> Paso 2: Recolección de Muestras
+              <Scale className="w-5 h-5 text-primary" /> Paso 2: Recoleccion de Muestras
             </h3>
 
             <div className="grid grid-cols-2 gap-4">
@@ -311,14 +393,14 @@ export function RegisterHarvest() {
                   <Input id="sample_weight" type="number" step="0.1" placeholder="ej. 2.4" value={currentWeight} onChange={(event) => setCurrentWeight(event.target.value)} />
                 </div>
                 <Button type="button" onClick={handleAddSample} variant="secondary" icon={<Plus className="w-5 h-5" />}>
-                  Añadir Muestra
+                  Anadir Muestra
                 </Button>
               </div>
             </div>
 
             {samples.length === 0 ? (
               <div className="text-center py-6 text-on-surface-variant text-sm font-medium border border-dashed border-outline-variant rounded-xl">
-                Aún no ha ingresado muestras. Agregue al menos una para calcular la proyección.
+                Aun no ha ingresado muestras. Agregue al menos una para calcular la proyeccion.
               </div>
             ) : (
               <div className="border border-outline-variant rounded-xl overflow-hidden bg-white">
@@ -375,7 +457,7 @@ export function RegisterHarvest() {
                 Volver
               </Button>
               <Button type="button" onClick={handleNextStep2} icon={<ChevronRight className="w-5 h-5" />}>
-                Calcular Estimación
+                Calcular Estimacion
               </Button>
             </div>
           </Card>
@@ -388,7 +470,7 @@ export function RegisterHarvest() {
                 <Sparkles className="w-8 h-8" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-bold text-on-surface">Proyección de Rendimiento Realizada</h3>
+                <h3 className="text-xl font-bold text-on-surface">Proyeccion de Rendimiento Realizada</h3>
                 <p className="text-sm font-semibold text-on-surface-variant max-w-sm mx-auto">
                   El precio inicial se toma del producto registrado en la API y puede ajustarse antes de guardar.
                 </p>
@@ -420,10 +502,10 @@ export function RegisterHarvest() {
                 <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="text-center md:text-left space-y-2">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary-container text-primary font-bold rounded-full text-[10px] uppercase tracking-wider">
-                      Valoración Proyectada
+                      Valoracion Proyectada
                     </span>
                     <h4 className="text-2xl font-black tracking-tight text-white">Importe Bruto Proyectado</h4>
-                    <p className="text-white/70 text-xs font-semibold">Basado en {estimatedWeight.toLocaleString()} KG estimados</p>
+                    <p className="text-white/70 text-xs font-semibold">{selectedFarm?.name || 'Finca'} • {selectedLot?.name || 'Lote'} • {selectedProduct?.name || 'Producto'}</p>
                   </div>
 
                   <div className="text-center md:text-right">
@@ -450,3 +532,5 @@ export function RegisterHarvest() {
     </div>
   );
 }
+
+export default RegisterHarvest;
