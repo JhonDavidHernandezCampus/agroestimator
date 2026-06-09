@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Calendar, Edit, Eye, Search, Trash2 } from 'lucide-react';
-import { useDeleteHarvest, useHarvests, useUpdateHarvest } from '../../hooks';
+import { useDeleteHarvest, useFarms, useHarvests, useLots, useUpdateHarvest } from '../../hooks';
 import { Harvest } from '../../types';
+import { AlertBanner } from '../../components/common/AlertBanner';
 import { PageHeader } from '../../components/common/PageHeader';
 import { DataTable } from '../../components/common/DataTable';
 import { Button } from '../../components/common/Button';
@@ -11,10 +12,13 @@ import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { Modal } from '../../components/common/Modal';
 import { Input } from '../../components/common/Input';
 import { Loader } from '../../components/common/Loader';
+import { Select } from '../../components/common/Select';
 
 export function History() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: harvests, isLoading } = useHarvests();
+  const { data: farms = [] } = useFarms();
   const { mutateAsync: deleteHarvest } = useDeleteHarvest();
   const { mutateAsync: updateHarvest } = useUpdateHarvest();
 
@@ -29,6 +33,33 @@ export function History() {
   const [editLot, setEditLot] = useState('');
   const [editQuantity, setEditQuantity] = useState(0);
 
+  const createdHarvestId = searchParams.get('created');
+  const editTargetFarm = farms.find((farm) => farm.name === editTarget?.farmName);
+  const { data: editLots = [] } = useLots(editTargetFarm?.id || undefined);
+
+  const currentLotOptions = useMemo(() => {
+    if (!editLot) {
+      return editLots;
+    }
+
+    if (editLots.some((lot) => lot.name === editLot)) {
+      return editLots;
+    }
+
+    return [
+      {
+        id: `legacy-${editLot}`,
+        farmId: editTargetFarm?.id || '',
+        name: editLot,
+        hectares: null,
+        cropType: null,
+        plantingDate: null,
+        isActive: true,
+      },
+      ...editLots,
+    ];
+  }, [editLot, editLots, editTargetFarm?.id]);
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -38,11 +69,12 @@ export function History() {
     );
   }
 
-  const formatCOP = (value: number) => new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(value);
+  const formatCOP = (value: number) =>
+    new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      maximumFractionDigits: 0,
+    }).format(value);
 
   const filteredHarvests = (harvests || []).filter((harvest) => {
     const matchesSearch =
@@ -68,6 +100,9 @@ export function History() {
       await deleteHarvest(deleteTargetId);
       setDeleteTargetId(null);
       setFeedbackMessage('La cosecha fue eliminada correctamente.');
+      if (createdHarvestId === deleteTargetId) {
+        setSearchParams({});
+      }
     } catch (error: any) {
       setFeedbackError(error?.message || 'Error al eliminar la cosecha.');
     } finally {
@@ -122,17 +157,14 @@ export function History() {
         }
       />
 
-      {feedbackMessage && (
-        <div className="rounded-xl border border-secondary/10 bg-secondary-container/40 px-4 py-3 text-sm font-semibold text-on-secondary-container">
-          {feedbackMessage}
-        </div>
+      {createdHarvestId && (
+        <AlertBanner
+          variant="success"
+          message="La cosecha se registró correctamente y ya está disponible para consulta, edición o eliminación."
+        />
       )}
-
-      {feedbackError && (
-        <div className="rounded-xl border border-error-custom/10 bg-error-container px-4 py-3 text-sm font-semibold text-error-custom">
-          {feedbackError}
-        </div>
-      )}
+      {feedbackMessage && <AlertBanner variant="success" message={feedbackMessage} />}
+      {feedbackError && <AlertBanner variant="error" message={feedbackError} />}
 
       <section className="bg-surface-lowest p-4 rounded-xl border border-[#EEFFCD] shadow-[0px_4px_20px_rgba(30,41,59,0.05)] flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -260,7 +292,17 @@ export function History() {
       {editTarget && (
         <Modal isOpen={editTarget !== null} onClose={() => setEditTarget(null)} title={`Editar Cosecha: ${editTarget.lot}`}>
           <div className="space-y-4">
-            <Input id="editLot" label="Nombre del Lote / Sector" value={editLot} onChange={(event) => setEditLot(event.target.value)} />
+            {currentLotOptions.length > 0 ? (
+              <Select
+                id="editLot"
+                label="Lote"
+                value={editLot}
+                onChange={(event) => setEditLot(event.target.value)}
+                options={currentLotOptions.map((lot) => ({ value: lot.name, label: lot.name }))}
+              />
+            ) : (
+              <Input id="editLot" label="Nombre del Lote / Sector" value={editLot} onChange={(event) => setEditLot(event.target.value)} />
+            )}
             <Input
               id="editQuantity"
               type="number"
@@ -287,3 +329,5 @@ export function History() {
     </div>
   );
 }
+
+export default History;

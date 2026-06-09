@@ -107,7 +107,7 @@ export function Profile() {
               Los datos del perfil se consultan directamente desde la API. El botón de actualización vuelve a pedir la información almacenada actualmente en la base de datos.
             </div>
             <div className="flex justify-end gap-3 pt-2">
-              <Button variant="secondary" onClick={() => refetch()} isLoading={isRefetching}>
+              <Button variant="secondary" onClick={() => { void refetch(); }} isLoading={isRefetching}>
                 Actualizar Perfil
               </Button>
               <Button variant="danger" onClick={handleLogout} icon={<LogOut className="w-4 h-4" />}>
