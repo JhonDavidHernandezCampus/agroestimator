@@ -8,13 +8,13 @@ import { productApi } from '../api/product.api';
 import { statisticsApi } from '../api/statistics.api';
 import { vehicleApi, VehicleMutationRequest } from '../api/vehicle.api';
 import { useAuth } from '../contexts/AuthContext';
-import { Harvest } from '../types';
 
 export function useLogin() {
   const { login } = useAuth();
   
   return useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
+      console.log({ email, password });
       return await login(email, password);
     },
   });
