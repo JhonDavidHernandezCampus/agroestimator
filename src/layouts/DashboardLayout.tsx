@@ -124,7 +124,7 @@ export function DashboardLayout() {
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center bg-secondary-container px-3 py-1 rounded-full text-on-secondary-container gap-1.5 text-xs font-bold border border-on-secondary-container/10">
               <CloudLightning className="w-3.5 h-3.5 animate-bounce" />
-              <span>Servidor Local Conectado</span>
+              <span>API AWS Lambda</span>
             </div>
             <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xs">
               {user?.name.slice(0, 2).toUpperCase()}

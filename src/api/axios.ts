@@ -1,282 +1,170 @@
-import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { Harvest, Statistics, User, Vehicle } from '../types';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { ApiResponse, AuthResponse, StoredAuthSession } from '../types';
 
-// In absolute production mode, this would draw from import.meta.env
-const BASE_URL = (import.meta as any).env.VITE_API_URL || 'https://agroestimator-placeholder.api';
+const BASE_URL = import.meta.env.VITE_API_URL;
+const AUTH_STORAGE_KEY = 'agro_auth_session';
 
-export const apiClient = axios.create({
+type RetryableRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+
+export class ApiRequestError extends Error {
+  status?: number;
+  code?: string;
+  isNetworkError: boolean;
+
+  constructor(message: string, status?: number, code?: string, isNetworkError = false) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.status = status;
+    this.code = code;
+    this.isNetworkError = isNetworkError;
+  }
+}
+
+if (!BASE_URL) {
+  throw new Error('Missing VITE_API_URL environment variable.');
+}
+
+export function getStoredAuthSession(): StoredAuthSession | null {
+  const rawValue = localStorage.getItem(AUTH_STORAGE_KEY);
+  if (!rawValue) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawValue) as StoredAuthSession;
+  } catch {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    return null;
+  }
+}
+
+export function setStoredAuthSession(session: StoredAuthSession): void {
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+}
+
+export function clearStoredAuthSession(): void {
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
+function getAccessToken(): string | null {
+  return getStoredAuthSession()?.auth.token ?? null;
+}
+
+function createApiRequestError(error: AxiosError<ApiResponse<unknown>>): ApiRequestError {
+  if (error.response) {
+    return new ApiRequestError(
+      error.response.data?.message || error.message || 'Request failed.',
+      error.response.status,
+      error.code,
+      false
+    );
+  }
+
+  if (error.request) {
+    return new ApiRequestError('No fue posible conectar con la API.', undefined, error.code, true);
+  }
+
+  return new ApiRequestError(error.message || 'Unexpected request error.', undefined, error.code, false);
+}
+
+function notifyUnauthorized(): void {
+  clearStoredAuthSession();
+  window.dispatchEvent(new Event('agro:auth-expired'));
+
+  if (window.location.hash !== '#/login') {
+    window.location.hash = '#/login';
+  }
+}
+
+const refreshClient = axios.create({
   baseURL: BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Seed Initial Local Data
-const INITIAL_HARVESTS: Harvest[] = [
-  {
-    id: 'h1',
-    date: '2023-10-14',
-    farmName: 'Hacienda Palma del Norte',
-    lot: 'Campo Norte Palma A1',
-    product: 'RFF Palma de Aceite',
-    vehicle: 'Tractor JD 7210R',
-    quantity: 1240,
-    samples: [
-      { id: 's1', weight: 2.3, quality: 'Alta' },
-      { id: 's2', weight: 2.5, quality: 'Alta' },
-      { id: 's3', weight: 2.7, quality: 'Alta' }
-    ],
-    averageWeight: 2.5,
-    estimatedWeight: 3100, // in kg
-    estimatedValue: 1240 * 2.5 * 1000 // quantity * avgWeight * pricing projection
+export const apiClient = axios.create({
+  baseURL: BASE_URL,
+  withCredentials: true,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
   },
-  {
-    id: 'h2',
-    date: '2023-10-12',
-    farmName: 'Huerto del Río',
-    lot: 'Arboleda del Río',
-    product: 'Coco',
-    vehicle: 'Tractor MZ-120 [VH-441]',
-    quantity: 850,
-    samples: [
-      { id: 's4', weight: 2.0, quality: 'Alta' },
-      { id: 's5', weight: 2.2, quality: 'Media' },
-      { id: 's6', weight: 2.4, quality: 'Alta' }
-    ],
-    averageWeight: 2.2,
-    estimatedWeight: 1870,
-    estimatedValue: 850 * 2.2 * 1150
-  },
-  {
-    id: 'h3',
-    date: '2023-10-10',
-    farmName: 'Finca Altiplano',
-    lot: 'Terraza de la Colina B',
-    product: 'Dátiles',
-    vehicle: 'Camión de Carga-5 [VH-012]',
-    quantity: 2100,
-    samples: [
-      { id: 's7', weight: 3.1, quality: 'Alta' },
-      { id: 's8', weight: 2.9, quality: 'Media' },
-      { id: 's9', weight: 3.0, quality: 'Alta' }
-    ],
-    averageWeight: 3.0,
-    estimatedWeight: 6300,
-    estimatedValue: 2100 * 3.0 * 850
-  }
-];
+});
 
-const INITIAL_VEHICLES: Vehicle[] = [
-  {
-    id: 'v1',
-    name: 'Tractor JD 7210R',
-    plate: 'AG-8842-X',
-    capacity: 12500,
-    fuelLevel: 82,
-    nextService: '2024-10-12',
-    status: 'Activo'
-  },
-  {
-    id: 'v2',
-    name: 'F-450 Harvest Hauler',
-    plate: 'PK-1102-W',
-    capacity: 8000,
-    fuelLevel: 12,
-    nextService: '2023-11-25',
-    status: 'Mantenimiento',
-    problem: 'Fuga Hidráulica',
-    returnDate: 'Mañana'
-  },
-  {
-    id: 'v3',
-    name: 'Claas Lexion 8900',
-    plate: 'HV-5590-M',
-    capacity: 15000,
-    fuelLevel: 45,
-    nextService: '2024-11-02',
-    status: 'Activo'
-  }
-];
+let refreshPromise: Promise<string | null> | null = null;
 
-// Initialize LocalStorage Data if not present
-if (!localStorage.getItem('agro_harvests')) {
-  localStorage.setItem('agro_harvests', JSON.stringify(INITIAL_HARVESTS));
-}
-if (!localStorage.getItem('agro_vehicles')) {
-  localStorage.setItem('agro_vehicles', JSON.stringify(INITIAL_VEHICLES));
+async function refreshAccessToken(): Promise<string | null> {
+  const currentSession = getStoredAuthSession();
+  if (!currentSession?.auth.refreshToken) {
+    return null;
+  }
+
+  if (!refreshPromise) {
+    refreshPromise = refreshClient
+      .post<ApiResponse<AuthResponse>>('/api/auth/refresh-token', {
+        refreshToken: currentSession.auth.refreshToken,
+      })
+      .then((response) => {
+        const nextAuth = response.data.data;
+        setStoredAuthSession({
+          ...currentSession,
+          auth: nextAuth,
+        });
+
+        return nextAuth.token;
+      })
+      .catch(() => {
+        notifyUnauthorized();
+        return null;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
 }
 
-// Request Interceptor: Attach authentication tokens and log requests
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const userJson = localStorage.getItem('agro_user');
-    if (userJson) {
-      const user: User = JSON.parse(userJson);
-      if (user.token && config.headers) {
-        config.headers.Authorization = `Bearer ${user.token}`;
-      }
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const token = getAccessToken();
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-);
 
-// Response Interceptor & Centralized Mock Server Routing
+  return config;
+});
+
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response;
-  },
-  async (error: AxiosError) => {
-    const { config } = error;
-    if (!config) {
-      return Promise.reject(error);
+  (response) => response,
+  async (error: AxiosError<ApiResponse<unknown>>) => {
+    const config = error.config as RetryableRequestConfig | undefined;
+    const requestUrl = config?.url || '';
+    const isAuthEndpoint =
+      requestUrl.includes('/api/auth/login') ||
+      requestUrl.includes('/api/auth/refresh-token') ||
+      requestUrl.includes('/api/auth/logout');
+
+    if (
+      config &&
+      !config._retry &&
+      !isAuthEndpoint &&
+      (error.response?.status === 401 || error.response?.status === 403)
+    ) {
+      config._retry = true;
+
+      const nextToken = await refreshAccessToken();
+      if (nextToken) {
+        config.headers.Authorization = `Bearer ${nextToken}`;
+        return apiClient(config);
+      }
     }
 
-    const { url, method, data } = config;
-    const body = data ? JSON.parse(data) : null;
-
-    // Simulate Network Latency
-    await new Promise((resolve) => setTimeout(resolve, 350));
-
-    // Custom Mock Server Logic
-    try {
-      if (url?.includes('/api/auth/login') && method === 'post') {
-        const { email, password } = body;
-        if (password && email) {
-          // Allow any login for convenience in field preview, default fallback
-          const matchedUser: User = {
-            id: 'u1',
-            name: email.split('@')[0].toUpperCase(),
-            email: email,
-            role: 'Líder de Operaciones Senior',
-            token: 'mock-jwt-token-99887711'
-          };
-          localStorage.setItem('agro_user', JSON.stringify(matchedUser));
-          return createMockResponse(matchedUser);
-        } else {
-          return createMockErrorResponse(400, 'Correo y contraseña requeridos');
-        }
-      }
-
-      if (url?.includes('/api/auth/logout') && method === 'post') {
-        localStorage.removeItem('agro_user');
-        return createMockResponse({ loggedOut: true });
-      }
-
-      // Harvests list
-      if (url?.endsWith('/api/harvests') && method === 'get') {
-        const harvests: Harvest[] = JSON.parse(localStorage.getItem('agro_harvests') || '[]');
-        return createMockResponse(harvests);
-      }
-
-      // Single harvest fetch
-      const harvestIdMatch = url?.match(/\/api\/harvests\/([a-zA-Z0-9_-]+)$/);
-      if (harvestIdMatch && method === 'get') {
-        const harvestId = harvestIdMatch[1];
-        const harvests: Harvest[] = JSON.parse(localStorage.getItem('agro_harvests') || '[]');
-        const harvest = harvests.find((h) => h.id === harvestId);
-        if (harvest) {
-          return createMockResponse(harvest);
-        } else {
-          return createMockErrorResponse(404, 'Cosecha no encontrada');
-        }
-      }
-
-      // Add harvest (POST)
-      if (url?.endsWith('/api/harvests') && method === 'post') {
-        const harvests: Harvest[] = JSON.parse(localStorage.getItem('agro_harvests') || '[]');
-        const newHarvest: Harvest = {
-          ...body,
-          id: 'harvest_' + Date.now().toString(36),
-        };
-        harvests.unshift(newHarvest);
-        localStorage.setItem('agro_harvests', JSON.stringify(harvests));
-        return createMockResponse(newHarvest);
-      }
-
-      // Edit harvest (PUT)
-      if (harvestIdMatch && method === 'put') {
-        const harvestId = harvestIdMatch[1];
-        const harvests: Harvest[] = JSON.parse(localStorage.getItem('agro_harvests') || '[]');
-        const index = harvests.findIndex((h) => h.id === harvestId);
-        if (index !== -1) {
-          const updated: Harvest = { ...harvests[index], ...body };
-          harvests[index] = updated;
-          localStorage.setItem('agro_harvests', JSON.stringify(harvests));
-          return createMockResponse(updated);
-        } else {
-          return createMockErrorResponse(404, 'Cosecha no encontrada para editar');
-        }
-      }
-
-      // Delete harvest (DELETE)
-      if (harvestIdMatch && method === 'delete') {
-        const harvestId = harvestIdMatch[1];
-        let harvests: Harvest[] = JSON.parse(localStorage.getItem('agro_harvests') || '[]');
-        const filtered = harvests.filter((h) => h.id !== harvestId);
-        localStorage.setItem('agro_harvests', JSON.stringify(filtered));
-        return createMockResponse({ id: harvestId, deleted: true });
-      }
-
-      // Statistics retrieval
-      if (url?.includes('/api/statistics') && method === 'get') {
-        const harvests: Harvest[] = JSON.parse(localStorage.getItem('agro_harvests') || '[]');
-        const totalHarvests = harvests.length;
-        const totalWeight = harvests.reduce((acc, h) => acc + (h.estimatedWeight || 0), 0);
-        const estimatedEarnings = harvests.reduce((acc, h) => acc + (h.estimatedValue || 0), 0);
-
-        const vehicles: Vehicle[] = JSON.parse(localStorage.getItem('agro_vehicles') || '[]');
-        const activeVehicles = vehicles.filter((v) => v.status === 'Activo').length;
-        const inMaintenanceVehicles = vehicles.filter((v) => v.status === 'Mantenimiento').length;
-
-        const stats: Statistics = {
-          totalHarvests,
-          totalWeight,
-          estimatedEarnings,
-          activeVehicles,
-          inMaintenanceVehicles,
-        };
-
-        return createMockResponse(stats);
-      }
-
-      // Default mock fallback or trigger real network request if configured
-      return Promise.reject(error);
-    } catch (e: any) {
-      return createMockErrorResponse(500, e.message || 'Error de simulación del servidor');
+    if (!isAuthEndpoint && (error.response?.status === 401 || error.response?.status === 403)) {
+      notifyUnauthorized();
     }
+
+    return Promise.reject(createApiRequestError(error));
   }
 );
-
-// Helpers to simulate correct mock formatting
-function createMockResponse(data: any): Promise<any> {
-  return Promise.resolve({
-    data: {
-      success: true,
-      data,
-    },
-    status: 200,
-    statusText: 'OK',
-    headers: {},
-    config: {},
-  });
-}
-
-function createMockErrorResponse(status: number, message: string): Promise<any> {
-  const customError = new AxiosError(
-    message,
-    status.toString(),
-    {} as any,
-    {} as any,
-    {
-      data: { success: false, message },
-      status,
-      statusText: 'Error',
-      headers: {},
-      config: {} as any,
-    }
-  );
-  return Promise.reject(customError);
-}

@@ -44,7 +44,7 @@ export function Login() {
       await loginMutate({ email: data.email, password: data.password });
       navigate('/dashboard');
     } catch (err: any) {
-      setAuthError(err.response?.data?.message || 'Error de inicio de sesión. Verifique los datos.');
+      setAuthError(err?.message || 'Error de inicio de sesión. Verifique los datos.');
     }
   };
 
@@ -85,18 +85,6 @@ export function Login() {
           {...register('password')}
         />
 
-        {/* Remember / Device flag */}
-        <div className="flex items-center gap-2 py-1 select-none cursor-pointer">
-          <input
-            id="remember"
-            type="checkbox"
-            className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary-container focus:ring-4 cursor-pointer"
-          />
-          <label htmlFor="remember" className="text-sm font-semibold text-on-surface-variant cursor-pointer">
-            Recordar este dispositivo
-          </label>
-        </div>
-
         <Button
           type="submit"
           className="w-full mt-2"
@@ -107,36 +95,8 @@ export function Login() {
         </Button>
       </form>
 
-      {/* Social options */}
-      <div className="space-y-4 pt-1">
-        <div className="flex items-center gap-4">
-          <div className="h-px flex-1 bg-outline-variant/30" />
-          <span className="text-xs font-bold text-outline uppercase tracking-wider">o continuar con</span>
-          <div className="h-px flex-1 bg-outline-variant/30" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              // Direct login simulation for testing
-              const email = 'agricultor@campo.com';
-              const password = 'password123';
-              loginMutate({ email, password }).then(() => navigate('/dashboard'));
-            }}
-            className="flex items-center justify-center gap-2 h-12 border border-outline-variant rounded-xl bg-surface-container-lowest hover:bg-surface-container text-sm font-bold transition-all cursor-pointer"
-          >
-            <span className="text-primary font-extrabold text-sm font-sans">AgriDemo</span>
-          </button>
-          <button
-            type="button"
-            className="flex items-center justify-center gap-2 h-12 border border-outline-variant rounded-xl bg-surface-container-lowest hover:bg-surface-container text-sm font-bold transition-all cursor-pointer opacity-70"
-            disabled
-          >
-            <span className="material-symbols-outlined text-[18px]">agriculture</span>
-            <span>AgriPass</span>
-          </button>
-        </div>
+      <div className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest px-4 py-3 text-sm font-medium text-on-surface-variant">
+        La autenticación se resuelve contra la API real desplegada en AWS Lambda. La sesión se restaura automáticamente usando JWT y refresh token.
       </div>
 
       <footer className="text-center pt-2 border-t border-outline-variant/20">

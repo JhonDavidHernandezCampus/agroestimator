@@ -16,23 +16,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const buildUser = (session: Awaited<ReturnType<typeof authApi.login>>): User => ({
+    id: session.auth.id,
+    name: session.profile
+      ? `${session.profile.firstName} ${session.profile.lastName}`.trim()
+      : session.auth.name,
+    email: session.profile?.email || session.auth.email,
+    role: session.profile?.role || session.auth.role,
+    token: session.auth.token,
+  });
+
   useEffect(() => {
-    // Restore session on load
-    const savedUser = localStorage.getItem('agro_user');
-    if (savedUser) {
+    let isMounted = true;
+
+    const restoreSession = async () => {
       try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        localStorage.removeItem('agro_user');
+        const restoredSession = await authApi.restoreSession();
+        if (isMounted && restoredSession) {
+          setUser(buildUser(restoredSession));
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
-    }
-    setIsLoading(false);
+    };
+
+    const handleAuthExpired = () => {
+      if (isMounted) {
+        setUser(null);
+        setIsLoading(false);
+      }
+    };
+
+    window.addEventListener('agro:auth-expired', handleAuthExpired);
+    void restoreSession();
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('agro:auth-expired', handleAuthExpired);
+    };
   }, []);
 
   const login = async (email: string, pass: string) => {
     setIsLoading(true);
     try {
-      const loggedInUser = await authApi.login(email, pass);
+      const session = await authApi.login(email, pass);
+      const loggedInUser = buildUser(session);
       setUser(loggedInUser);
       return loggedInUser;
     } finally {

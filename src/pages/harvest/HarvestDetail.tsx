@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useHarvest } from '../../hooks';
+import { useHarvest, useVehicles } from '../../hooks';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Card } from '../../components/common/Card';
 import { Loader } from '../../components/common/Loader';
@@ -20,6 +20,9 @@ export function HarvestDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: harvest, isLoading, error } = useHarvest(id || '');
+  const { data: vehicles = [] } = useVehicles();
+
+  const vehicle = vehicles.find((item) => item.name === harvest?.vehicle || item.plate === harvest?.vehicle);
 
   if (isLoading) {
     return (
@@ -34,7 +37,7 @@ export function HarvestDetail() {
     return (
       <div className="space-y-6 p-8 text-center bg-surface-container rounded-2xl">
         <h3 className="text-xl font-bold text-error-custom">Error al cargar la cosecha</h3>
-        <p className="text-sm text-on-surface-variant">La cosecha solicitada no existe o fue eliminada de la base de datos local.</p>
+        <p className="text-sm text-on-surface-variant">La cosecha solicitada no existe o no pudo recuperarse desde la API.</p>
         <Button onClick={() => navigate('/history')}>Volver al Historial</Button>
       </div>
     );
@@ -91,17 +94,17 @@ export function HarvestDetail() {
         </div>
 
         {/* Currency projection */}
-        <div className="bg-[#def6a5] p-8 rounded-2xl shadow-md border border-[#c9ec85] flex flex-col justify-between">
+        <div className="bg-tertiary-container p-8 rounded-2xl shadow-md border border-secondary-container flex flex-col justify-between">
           <div>
-            <span className="inline-block px-3 py-1 bg-[#4b670c]/10 text-[#4b670c] font-bold rounded-full text-[10px] uppercase tracking-wider mb-4">
+            <span className="inline-block px-3 py-1 bg-secondary/10 text-secondary font-bold rounded-full text-[10px] uppercase tracking-wider mb-4">
               Valoración Económica
             </span>
-            <p className="text-xs font-semibold text-[#4b670c] uppercase">Importe bruto estimado</p>
+            <p className="text-xs font-semibold text-secondary uppercase">Importe bruto estimado</p>
             <p className="text-3xl font-black text-[#141f00] mt-1 tracking-tight">
               {formatCOP(harvest.estimatedValue)}
             </p>
           </div>
-          <p className="text-xs text-[#4b670c] font-medium leading-relaxed mt-4">
+          <p className="text-xs text-secondary font-medium leading-relaxed mt-4">
             Precio de referencia por KG: ${harvest.pricePerKg || 1150} COP.
           </p>
         </div>
@@ -182,23 +185,23 @@ export function HarvestDetail() {
               <div>
                 <p className="text-xs text-on-surface-variant font-bold">Lote de Maquinaria</p>
                 <p className="text-base font-black text-on-surface mt-1">{harvest.vehicle}</p>
-                <p className="text-xs font-semibold text-on-surface-variant mt-0.5">Operador Autorizado de Turno</p>
+                <p className="text-xs font-semibold text-on-surface-variant mt-0.5">{vehicle?.vehicleType || 'Tipo no especificado'}</p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div className="flex justify-between items-center text-sm">
                 <span className="font-semibold text-on-surface-variant">Capacidad Máxima</span>
-                <span className="font-bold text-on-surface">15,000 kg</span>
+                <span className="font-bold text-on-surface">{vehicle ? `${Number(vehicle.capacityKg).toLocaleString('es-CO')} kg` : 'No disponible'}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="font-semibold text-on-surface-variant">Combustible Utilizado</span>
-                <span className="font-bold text-on-surface">74%</span>
+                <span className="font-bold text-on-surface">{vehicle?.fuelLevel != null ? `${vehicle.fuelLevel}%` : 'No disponible'}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
-                <span className="font-semibold text-on-surface-variant">Sincronización GPS</span>
+                <span className="font-semibold text-on-surface-variant">Próximo Servicio</span>
                 <span className="font-bold text-primary flex items-center gap-1">
-                  <Globe className="w-4 h-4 animate-bounce" /> Activo
+                  <Globe className="w-4 h-4 animate-bounce" /> {vehicle?.nextServiceDate ? new Date(vehicle.nextServiceDate).toLocaleDateString('es-CO') : 'No disponible'}
                 </span>
               </div>
             </div>
