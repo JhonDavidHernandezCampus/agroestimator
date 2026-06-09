@@ -15,8 +15,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
+// -- add for jhon, need for lambda
+using Amazon.Lambda.AspNetCoreServer.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddAWSLambdaHosting(
+    LambdaEventSource.HttpApi
+);
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
