@@ -106,7 +106,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("CorsPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "http://172.28.112.1:3000","http://localhost:8080", "https://main.d2yccnnyravahh.amplifyapp.com/", "https://dev.d2yccnnyravahh.amplifyapp.com/")
+        policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "http://172.28.112.1:3000","http://localhost:8080", "https://main.d2yccnnyravahh.amplifyapp.com", "https://dev.d2yccnnyravahh.amplifyapp.com")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
