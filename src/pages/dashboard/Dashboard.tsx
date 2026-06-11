@@ -88,7 +88,7 @@ export function Dashboard() {
   )[0];
 
   return (
-    <div className="space-y-stack-lg animate-in fade-in duration-300">
+    <div className="space-y-stack-lg animate-in fade-in duration-300 flex flex-col gap-3">
       {/* Welcome header */}
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>

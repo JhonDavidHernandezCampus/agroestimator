@@ -1,4 +1,3 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Database, IdCard, LoaderCircle, LogOut, MapPin, Phone, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,7 +31,7 @@ export function Profile() {
 
   return (
     <div className="space-y-stack-lg animate-in fade-in duration-300">
-      <PageHeader title="Perfil de Usuario" description="Información cargada desde la API protegida por JWT." />
+      <PageHeader title="Perfil de Usuario" description="" />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-4 select-none">
@@ -103,9 +102,9 @@ export function Profile() {
 
           <Card className="p-6 space-y-4">
             <h4 className="text-sm font-bold text-outline uppercase tracking-wider">Sesión y Perfil</h4>
-            <div className="py-2 border-t border-b border-outline-variant/30 text-xs text-on-surface-variant font-medium leading-relaxed">
+         {/*    <div className="py-2 border-t border-b border-outline-variant/30 text-xs text-on-surface-variant font-medium leading-relaxed">
               Los datos del perfil se consultan directamente desde la API. El botón de actualización vuelve a pedir la información almacenada actualmente en la base de datos.
-            </div>
+            </div> */}
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="secondary" onClick={() => { void refetch(); }} isLoading={isRefetching}>
                 Actualizar Perfil

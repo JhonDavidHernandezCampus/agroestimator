@@ -39,7 +39,9 @@ public class LotCommandsHandler :
             Name = request.Name,
             Hectares = request.Hectares,
             CropType = request.CropType,
-            PlantingDate = request.PlantingDate
+            PlantingDate = request.PlantingDate.HasValue
+                ? DateTime.SpecifyKind(request.PlantingDate.Value, DateTimeKind.Utc)
+                : null
         };
 
         await _lotRepository.AddAsync(lot);
@@ -56,7 +58,9 @@ public class LotCommandsHandler :
         lot.Name = request.Name;
         lot.Hectares = request.Hectares;
         lot.CropType = request.CropType;
-        lot.PlantingDate = request.PlantingDate;
+        lot.PlantingDate = request.PlantingDate.HasValue
+            ? DateTime.SpecifyKind(request.PlantingDate.Value, DateTimeKind.Utc)
+            : null;
         lot.UpdatedAt = DateTime.UtcNow;
 
         _lotRepository.Update(lot);

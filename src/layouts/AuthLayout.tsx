@@ -27,7 +27,7 @@ export function AuthLayout() {
         <div className="absolute inset-0 bg-gradient-to-tr from-[#141f00]/90 via-[#366b00]/70 to-[#bfff8a]/20" />
         
         <div className="relative z-10 flex items-center gap-3">
-          <span className="material-symbols-outlined text-4xl text-primary-container">agriculture</span>
+          <span className="material-symbols-outlined text-4xl text-primary-container">agricultura</span>
           <span className="text-2xl font-bold text-white tracking-tight">AgroEstimador</span>
         </div>
 

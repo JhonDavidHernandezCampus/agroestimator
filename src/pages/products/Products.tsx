@@ -161,7 +161,7 @@ export function Products() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="flex flex-col gap-3">
         <div className="h-10 bg-surface-container animate-pulse rounded-lg w-1/4" />
         <Loader variant="skeleton-card" />
         <Loader variant="skeleton-list" />
@@ -170,7 +170,7 @@ export function Products() {
   }
 
   return (
-    <div className="space-y-stack-lg animate-in fade-in duration-300">
+    <div className="flex flex-col gap-3 animate-in fade-in duration-300">
       <PageHeader
         title="Productos"
         description="Catálogo real de productos usado por el dashboard y por el formulario de cosechas."

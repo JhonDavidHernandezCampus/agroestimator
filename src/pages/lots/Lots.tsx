@@ -195,7 +195,7 @@ export function Lots() {
   }
 
   return (
-    <div className="space-y-stack-lg animate-in fade-in duration-300">
+    <div className="flex flex-col gap-3 animate-in fade-in duration-300">
       <PageHeader
         title="Lotes"
         description="Gestione los lotes asociados a cada finca y mantenga el selector dependiente para cosechas reales."

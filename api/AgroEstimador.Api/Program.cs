@@ -18,6 +18,10 @@ using Serilog;
 // -- add for jhon, need for lambda
 using Amazon.Lambda.AspNetCoreServer.Hosting;
 
+
+// Enable legacy timestamp behavior for Npgsql (allows DateTime with Kind=Unspecified)
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAWSLambdaHosting(
@@ -106,7 +110,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("CorsPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "http://172.28.112.1:3000","http://localhost:8080", "https://main.d2yccnnyravahh.amplifyapp.com", "https://dev.d2yccnnyravahh.amplifyapp.com")
+        policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "http://172.28.112.1:3000","http://localhost:8080","http://[IP_ADDRESS]" ,  "https://main.d2yccnnyravahh.amplifyapp.com", "https://dev.d2yccnnyravahh.amplifyapp.com")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
